@@ -13,15 +13,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.withSettings;
 
 import java.util.concurrent.atomic.AtomicReference;
-
 import org.junit.Test;
+import org.mockito.MockSettings;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.mockito.StaticMockSettings;
 import org.mockito.exceptions.base.MockitoException;
 import org.mockito.exceptions.misusing.MissingMethodInvocationException;
 import org.mockito.exceptions.verification.NoInteractionsWanted;
 import org.mockito.exceptions.verification.WantedButNotInvoked;
+import org.mockito.internal.MockedStaticImpl;
+import org.mockito.internal.util.MockUtil;
+import org.mockito.mock.MockCreationSettings;
+import org.mockito.plugins.MockMaker;
 
 public final class StaticMockTest {
 
@@ -245,13 +248,7 @@ public final class StaticMockTest {
         Dummy dummyInstance = new Dummy();
 
         try (MockedStatic<Dummy> mockedStatic =
-                Mockito.mockStatic(
-                        Dummy.class,
-                        withSettings()
-                                .staticMockSettings(
-                                        StaticMockSettings.builder()
-                                                .stubInstanceMethods(true)
-                                                .build()))) {
+                mockStaticWithInstanceStubbing(Dummy.class, withSettings())) {
 
             // Stub via MockedStatic.when
             mockedStatic.when(dummyInstance::fooInstance).thenReturn("bar1");
@@ -263,6 +260,16 @@ public final class StaticMockTest {
 
             verify(dummyInstance, times(2)).fooInstance();
         }
+    }
+
+    // Simulate how Mockito-Kotlin will consume this API
+    public <T> MockedStatic<T> mockStaticWithInstanceStubbing(
+            Class<T> classToMock, MockSettings settings) {
+        MockCreationSettings<T> creationSettings = settings.buildStatic(classToMock);
+        MockMaker.StaticMockControl<T> control =
+                MockUtil.createStaticMockWithInstanceMethodStubbing(classToMock, creationSettings);
+        control.enable();
+        return new MockedStaticImpl<>(control);
     }
 
     static class Dummy {

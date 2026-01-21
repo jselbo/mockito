@@ -37,7 +37,6 @@ import org.mockitoutil.TestBase;
  * <p>
  * For more rationale behind this experimental test
  * <a href="https://www.linkedin.com/pulse/mockito-vs-powermock-opinionated-dogmatic-static-mocking-faber">see the article</a>.
- *
  */
 public class StaticMockingExperimentTest extends TestBase {
 

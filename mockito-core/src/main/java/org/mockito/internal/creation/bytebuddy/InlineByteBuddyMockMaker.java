@@ -84,6 +84,13 @@ public class InlineByteBuddyMockMaker
     }
 
     @Override
+    public <T> StaticMockControl<T> createStaticMockWithInstanceMethodStubbing(
+            Class<T> type, MockCreationSettings<T> settings, MockHandler<T> handler) {
+        return inlineDelegateByteBuddyMockMaker.createStaticMockWithInstanceMethodStubbing(
+                type, settings, handler);
+    }
+
+    @Override
     public <T> ConstructionMockControl<T> createConstructionMock(
             Class<T> type,
             Function<MockedConstruction.Context, MockCreationSettings<T>> settingsFactory,

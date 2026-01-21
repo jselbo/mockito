@@ -202,6 +202,14 @@ public class MockUtil {
         return mockMaker.createStaticMock(type, settings, handler);
     }
 
+    // Used by Mockito-Kotlin
+    public static <T> MockMaker.StaticMockControl<T> createStaticMockWithInstanceMethodStubbing(
+            Class<T> type, MockCreationSettings<T> settings) {
+        MockMaker mockMaker = getMockMaker(settings.getMockMaker());
+        MockHandler<T> handler = createMockHandler(settings);
+        return mockMaker.createStaticMockWithInstanceMethodStubbing(type, settings, handler);
+    }
+
     public static <T> MockMaker.ConstructionMockControl<T> createConstructionMock(
             Class<T> type,
             Function<MockedConstruction.Context, MockCreationSettings<T>> settingsFactory,

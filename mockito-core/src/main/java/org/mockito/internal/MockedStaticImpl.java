@@ -37,7 +37,7 @@ public final class MockedStaticImpl<T> implements MockedStatic<T> {
 
     private final Location location = LocationFactory.create();
 
-    protected MockedStaticImpl(MockMaker.StaticMockControl<T> control) {
+    public MockedStaticImpl(MockMaker.StaticMockControl<T> control) {
         this.control = control;
     }
 

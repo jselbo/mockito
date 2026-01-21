@@ -10,7 +10,6 @@ import java.util.Set;
 
 import org.mockito.MockSettings;
 import org.mockito.NotExtensible;
-import org.mockito.StaticMockSettings;
 import org.mockito.listeners.InvocationListener;
 import org.mockito.listeners.StubbingLookupListener;
 import org.mockito.listeners.VerificationStartedListener;
@@ -160,12 +159,4 @@ public interface MockCreationSettings<T> {
      * @since 5.9.0
      */
     MockType getMockType();
-
-    /**
-     * Settings only applicable to static mocks.
-     *
-     * @see StaticMockSettings
-     * @since 5.20.1
-     */
-    StaticMockSettings getStaticMockSettings();
 }

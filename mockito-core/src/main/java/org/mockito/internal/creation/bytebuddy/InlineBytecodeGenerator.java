@@ -86,7 +86,7 @@ public class InlineBytecodeGenerator implements BytecodeGenerator, ClassFileTran
     public InlineBytecodeGenerator(
             Instrumentation instrumentation,
             WeakConcurrentMap<Object, MockMethodInterceptor> mocks,
-            DetachedThreadLocal<Map<Class<?>, MockMethodInterceptor>> mockedStatics,
+            DetachedThreadLocal<Map<Class<?>, StaticMockInfo>> mockedStatics,
             Predicate<Class<?>> isMockConstruction,
             ConstructionCallback onConstruction) {
         preload();

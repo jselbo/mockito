@@ -66,7 +66,7 @@ import org.mockito.plugins.MemberAccessor;
 public class MockMethodAdvice extends MockMethodDispatcher {
 
     private final WeakConcurrentMap<Object, MockMethodInterceptor> interceptors;
-    private final DetachedThreadLocal<Map<Class<?>, MockMethodInterceptor>> mockedStatics;
+    private final DetachedThreadLocal<Map<Class<?>, StaticMockInfo>> mockedStatics;
 
     private final String identifier;
 
@@ -80,7 +80,7 @@ public class MockMethodAdvice extends MockMethodDispatcher {
 
     public MockMethodAdvice(
             WeakConcurrentMap<Object, MockMethodInterceptor> interceptors,
-            DetachedThreadLocal<Map<Class<?>, MockMethodInterceptor>> mockedStatics,
+            DetachedThreadLocal<Map<Class<?>, StaticMockInfo>> mockedStatics,
             String identifier,
             Predicate<Class<?>> isMockConstruction,
             ConstructionCallback onConstruction) {
@@ -143,13 +143,14 @@ public class MockMethodAdvice extends MockMethodDispatcher {
     @Override
     public Callable<?> handleStatic(Class<?> type, Method origin, Object[] arguments)
             throws Throwable {
-        Map<Class<?>, MockMethodInterceptor> interceptors = mockedStatics.get();
+        Map<Class<?>, StaticMockInfo> interceptors = mockedStatics.get();
         if (interceptors == null || !interceptors.containsKey(type)) {
             return null;
         }
         return new ReturnValueWrapper(
                 interceptors
                         .get(type)
+                        .interceptor
                         .doIntercept(
                                 type,
                                 origin,
@@ -192,13 +193,13 @@ public class MockMethodAdvice extends MockMethodDispatcher {
             // Avoid recursive check
             return null;
         }
-        Map<Class<?>, MockMethodInterceptor> staticInterceptors = mockedStatics.get();
+        Map<Class<?>, StaticMockInfo> staticInterceptors = mockedStatics.get();
         if (staticInterceptors == null) {
             return null;
         }
-        MockMethodInterceptor interceptor = staticInterceptors.get(type);
-        if (interceptor != null && StaticMockUtils.isStubbingInstanceMethods(interceptor)) {
-            return interceptor;
+        StaticMockInfo staticMockInfo = staticInterceptors.get(type);
+        if (staticMockInfo != null && staticMockInfo.stubInstanceMethods) {
+            return staticMockInfo.interceptor;
         } else {
             return null;
         }

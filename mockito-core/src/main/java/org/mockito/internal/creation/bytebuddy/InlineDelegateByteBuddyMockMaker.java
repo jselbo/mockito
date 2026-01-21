@@ -227,7 +227,7 @@ class InlineDelegateByteBuddyMockMaker
     private final WeakConcurrentMap<Object, MockMethodInterceptor> mocks =
             new WeakConcurrentMap<>(false);
 
-    private final DetachedThreadLocal<Map<Class<?>, MockMethodInterceptor>> mockedStatics =
+    private final DetachedThreadLocal<Map<Class<?>, StaticMockInfo>> mockedStatics =
             new DetachedThreadLocal<>(DetachedThreadLocal.Cleaner.MANUAL);
 
     private final DetachedThreadLocal<Map<Class<?>, BiConsumer<Object, MockedConstruction.Context>>>
@@ -510,17 +510,17 @@ class InlineDelegateByteBuddyMockMaker
     @Override
     public MockHandler<?> getHandler(Object mock) {
         MockMethodInterceptor interceptor;
-        Map<Class<?>, MockMethodInterceptor> staticInterceptors = mockedStatics.get();
+        Map<Class<?>, StaticMockInfo> staticInterceptors = mockedStatics.get();
         if (mock instanceof Class<?>) {
-            interceptor = staticInterceptors != null ? staticInterceptors.get(mock) : null;
+            interceptor =
+                    staticInterceptors != null ? staticInterceptors.get(mock).interceptor : null;
         } else {
             interceptor = mocks.get(mock);
 
             if (interceptor == null && staticInterceptors != null) {
-                MockMethodInterceptor staticInterceptor = staticInterceptors.get(mock.getClass());
-                if (staticInterceptor != null
-                        && StaticMockUtils.isStubbingInstanceMethods(staticInterceptor)) {
-                    interceptor = staticInterceptor;
+                StaticMockInfo staticMockInfo = staticInterceptors.get(mock.getClass());
+                if (staticMockInfo != null && staticMockInfo.stubInstanceMethods) {
+                    interceptor = staticMockInfo.interceptor;
                 }
             }
         }
@@ -536,14 +536,16 @@ class InlineDelegateByteBuddyMockMaker
         MockMethodInterceptor mockMethodInterceptor =
                 new MockMethodInterceptor(newHandler, settings);
         if (mock instanceof Class<?>) {
-            Map<Class<?>, MockMethodInterceptor> interceptors = mockedStatics.get();
+            Map<Class<?>, StaticMockInfo> interceptors = mockedStatics.get();
             if (interceptors == null || !interceptors.containsKey(mock)) {
                 throw new MockitoException(
                         "Cannot reset "
                                 + mock
                                 + " which is not currently registered as a static mock");
             }
-            interceptors.put((Class<?>) mock, mockMethodInterceptor);
+            interceptors.put(
+                    (Class<?>) mock,
+                    new StaticMockInfo(mockMethodInterceptor, false /* stubInstanceMethods */));
         } else {
             if (!mocks.containsKey(mock)) {
                 throw new MockitoException(
@@ -614,6 +616,20 @@ class InlineDelegateByteBuddyMockMaker
     @Override
     public <T> StaticMockControl<T> createStaticMock(
             Class<T> type, MockCreationSettings<T> settings, MockHandler handler) {
+        return createStaticMockImpl(type, settings, handler, false /* stubInstanceMethods */);
+    }
+
+    @Override
+    public <T> StaticMockControl<T> createStaticMockWithInstanceMethodStubbing(
+            Class<T> type, MockCreationSettings<T> settings, MockHandler<T> handler) {
+        return createStaticMockImpl(type, settings, handler, true /* stubInstanceMethods */);
+    }
+
+    private <T> StaticMockControl<T> createStaticMockImpl(
+            Class<T> type,
+            MockCreationSettings<T> settings,
+            MockHandler handler,
+            boolean stubInstanceMethods) {
         if (type == ConcurrentHashMap.class) {
             throw new MockitoException(
                     "It is not possible to mock static methods of ConcurrentHashMap "
@@ -630,14 +646,15 @@ class InlineDelegateByteBuddyMockMaker
 
         bytecodeGenerator.mockClassStatic(type);
 
-        Map<Class<?>, MockMethodInterceptor> interceptors = mockedStatics.get();
+        Map<Class<?>, StaticMockInfo> interceptors = mockedStatics.get();
         if (interceptors == null) {
             interceptors = new WeakHashMap<>();
             mockedStatics.set(interceptors);
         }
         mockedStatics.getBackingMap().expungeStaleEntries();
 
-        return new InlineStaticMockControl<>(type, interceptors, settings, handler);
+        return new InlineStaticMockControl<>(
+                type, interceptors, settings, handler, stubInstanceMethods);
     }
 
     @Override
@@ -735,21 +752,24 @@ class InlineDelegateByteBuddyMockMaker
 
         private final Class<T> type;
 
-        private final Map<Class<?>, MockMethodInterceptor> interceptors;
+        private final Map<Class<?>, StaticMockInfo> interceptors;
 
         private final MockCreationSettings<T> settings;
 
         private final MockHandler<?> handler;
+        private final boolean stubInstanceMethods;
 
         private InlineStaticMockControl(
                 Class<T> type,
-                Map<Class<?>, MockMethodInterceptor> interceptors,
+                Map<Class<?>, StaticMockInfo> interceptors,
                 MockCreationSettings<T> settings,
-                MockHandler<?> handler) {
+                MockHandler<?> handler,
+                boolean stubInstanceMethods) {
             this.type = type;
             this.interceptors = interceptors;
             this.settings = settings;
             this.handler = handler;
+            this.stubInstanceMethods = stubInstanceMethods;
         }
 
         @Override
@@ -759,7 +779,11 @@ class InlineDelegateByteBuddyMockMaker
 
         @Override
         public void enable() {
-            if (interceptors.putIfAbsent(type, new MockMethodInterceptor(handler, settings))
+            if (interceptors.putIfAbsent(
+                            type,
+                            new StaticMockInfo(
+                                    new MockMethodInterceptor(handler, settings),
+                                    stubInstanceMethods))
                     != null) {
                 throw new MockitoException(
                         join(

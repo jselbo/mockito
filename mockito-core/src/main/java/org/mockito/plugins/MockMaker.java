@@ -178,6 +178,34 @@ public interface MockMaker {
     /**
      * If you want to provide your own implementation of {@code MockMaker} this method should:
      * <ul>
+     *     <li>Alter the supplied class to only change its behavior in the current thread.</li>
+     *     <li>Only alters the static method's behavior after being enabled.</li>
+     *     <li>Stops the altered behavior when disabled.</li>
+     * </ul>
+     *
+     * @param settings Mock creation settings like type to mock, extra interfaces and so on.
+     * @param handler See {@link org.mockito.invocation.MockHandler}.
+     *                <b>Do not</b> provide your own implementation at this time. Make sure your implementation of
+     *                {@link #getHandler(Object)} will return this instance.
+     * @param <T> Type of the mock to return, actually the <code>settings.getTypeToMock</code>.
+     * @return A control for the static mock.
+     * @since 5.21.1
+     */
+    default <T> StaticMockControl<T> createStaticMockWithInstanceMethodStubbing(
+            Class<T> type, MockCreationSettings<T> settings, MockHandler<T> handler) {
+        throw new MockitoException(
+                join(
+                        "The used MockMaker "
+                                + getClass().getSimpleName()
+                                + " does not support the creation of static mocks",
+                        "",
+                        "Ensure your MockMaker implementation supports this feature.",
+                        "Note that static mocks maker is not supported on Android."));
+    }
+
+    /**
+     * If you want to provide your own implementation of {@code MockMaker} this method should:
+     * <ul>
      *     <li>Intercept all constructions of the specified type in the current thread</li>
      *     <li>Only intercept the construction after being enabled.</li>
      *     <li>Stops the interception when disabled.</li>
