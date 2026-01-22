@@ -509,11 +509,13 @@ class InlineDelegateByteBuddyMockMaker
 
     @Override
     public MockHandler<?> getHandler(Object mock) {
-        MockMethodInterceptor interceptor;
+        MockMethodInterceptor interceptor = null;
         Map<Class<?>, StaticMockInfo> staticInterceptors = mockedStatics.get();
         if (mock instanceof Class<?>) {
-            interceptor =
-                    staticInterceptors != null ? staticInterceptors.get(mock).interceptor : null;
+            if (staticInterceptors != null) {
+                StaticMockInfo staticMockInfo = staticInterceptors.get(mock);
+                interceptor = staticMockInfo != null ? staticMockInfo.interceptor : null;
+            }
         } else {
             interceptor = mocks.get(mock);
 
