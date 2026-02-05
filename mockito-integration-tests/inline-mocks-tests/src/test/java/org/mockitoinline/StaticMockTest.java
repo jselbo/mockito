@@ -9,22 +9,15 @@ import static junit.framework.TestCase.assertNull;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.withSettings;
 
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.Test;
-import org.mockito.MockSettings;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.exceptions.base.MockitoException;
-import org.mockito.exceptions.misusing.MissingMethodInvocationException;
 import org.mockito.exceptions.verification.NoInteractionsWanted;
 import org.mockito.exceptions.verification.WantedButNotInvoked;
-import org.mockito.internal.MockedStaticImpl;
-import org.mockito.internal.util.MockUtil;
-import org.mockito.mock.MockCreationSettings;
-import org.mockito.plugins.MockMaker;
 
 public final class StaticMockTest {
 
@@ -230,48 +223,6 @@ public final class StaticMockTest {
         assertEquals("foobar", Dummy.fooVarargs("foo", "bar"));
     }
 
-    @Test
-    public void testStaticMockWithoutInstanceMethodStubbing() {
-        Dummy dummyInstance = new Dummy();
-
-        try (MockedStatic<Dummy> mockedStatic = Mockito.mockStatic(Dummy.class)) {
-            assertThatThrownBy(
-                            () -> mockedStatic.when(dummyInstance::fooInstance).thenReturn("bar"))
-                    .isInstanceOf(MissingMethodInvocationException.class)
-                    .hasMessageContaining(
-                            "when() requires an argument which has to be 'a method call on a mock'.");
-        }
-    }
-
-    @Test
-    public void testStaticMockWithInstanceMethodStubbing() {
-        Dummy dummyInstance = new Dummy();
-
-        try (MockedStatic<Dummy> mockedStatic =
-                mockStaticWithInstanceStubbing(Dummy.class, withSettings())) {
-
-            // Stub via MockedStatic.when
-            mockedStatic.when(dummyInstance::fooInstance).thenReturn("bar1");
-            assertEquals("bar1", dummyInstance.fooInstance());
-
-            // Stub via normal "when" API
-            Mockito.when(dummyInstance.fooInstance()).thenReturn("bar2");
-            assertEquals("bar2", dummyInstance.fooInstance());
-
-            verify(dummyInstance, times(2)).fooInstance();
-        }
-    }
-
-    // Simulate how Mockito-Kotlin will consume this API
-    public <T> MockedStatic<T> mockStaticWithInstanceStubbing(
-            Class<T> classToMock, MockSettings settings) {
-        MockCreationSettings<T> creationSettings = settings.buildStatic(classToMock);
-        MockMaker.StaticMockControl<T> control =
-                MockUtil.createStaticMockWithInstanceMethodStubbing(classToMock, creationSettings);
-        control.enable();
-        return new MockedStaticImpl<>(control);
-    }
-
     static class Dummy {
 
         static String var1 = null;
@@ -294,10 +245,6 @@ public final class StaticMockTest {
                 sb.append(arg);
             }
             return sb.toString();
-        }
-
-        String fooInstance() {
-            return "foo";
         }
     }
 }

@@ -2524,6 +2524,39 @@ public class Mockito extends ArgumentMatchers {
     }
 
     /**
+     * Creates a thread-local mock controller for the given singleton instance.
+     * The returned object's {@link MockedSingleton#close()} method must be called upon completing the
+     * test or the mock will remain active on the current thread.
+     * <p>
+     * This is useful for mocking instances of objects for which you don't control initialization, assignment, or access to the object, e.g. Java enum values.
+     *
+     * @param instance the singleton instance to mock.
+     * @param <T> the type of the singleton.
+     * @return mock controller
+     * @since 5.22.0
+     */
+    public static <T> MockedSingleton<T> mockSingleton(T instance) {
+        return mockSingleton(instance, withSettings());
+    }
+
+    /**
+     * Creates a thread-local mock controller for the given singleton instance.
+     * The returned object's {@link MockedSingleton#close()} method must be called upon completing the
+     * test or the mock will remain active on the current thread.
+     * <p>
+     * This is useful for mocking instances of objects for which you don't control initialization, assignment, or access to the object, e.g. Java enum values.
+     *
+     * @param instance the singleton instance to mock.
+     * @param mockSettings the mock settings to use.
+     * @param <T> the type of the singleton.
+     * @return mock controller
+     * @since 5.22.0
+     */
+    public static <T> MockedSingleton<T> mockSingleton(T instance, MockSettings mockSettings) {
+        return MOCKITO_CORE.mockSingleton(instance, mockSettings);
+    }
+
+    /**
      * Creates a thread-local mock controller for all constructions of the given class.
      * The returned object's {@link MockedConstruction#close()} method must be called upon completing the
      * test or the mock will remain active on the current thread.
