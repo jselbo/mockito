@@ -115,6 +115,8 @@ import java.util.function.Function;
  *      <a href="#52">52. New strictness attribute for @Mock annotation and <code>MockSettings.strictness()</code> methods (Since 4.6.0)</a><br/>
  *      <a href="#53">53. Specifying mock maker for individual mocks (Since 4.8.0)</a><br/>
  *      <a href="#54">54. Mocking/spying without specifying class (Since 4.10.0)</a><br/>
+ *      <a href="#55">55. Verification with assertions (Since 5.3.0)</a><br/>
+ *      <a href="#56">56. Mocking singletons (like Java enums) (Since 5.22.0)</a><br/>
  * </b>
  *
  * <h3 id="0">0. <a class="meaningful_link" href="#mockito2" name="mockito2">Migrating to Mockito 2</a></h3>
@@ -1769,6 +1771,20 @@ import java.util.function.Function;
  *     assertThat(param.getField2()).isEqualTo("bar");
  *   }));
  * </code></pre>
+ *
+ * <h3 id="56">56. <a class="meaningful_link" href="#mocked_singleton" name="mocked_singleton">
+ *  Mocking singletons (like Java enums)</a> (Since 5.22.0)</h3>
+ *
+ * Use the new {@link Mockito#mockSingleton(Object)} API to configure thread-local mocking of singleton objects for
+ * which you don't control initialization, assignment, or access. Java enums are a good example. The mocking only
+ * applies to the given instance and that instance only behaves as a mock on the current thread.
+ *
+ * <pre class="code"><code class="java">
+ *   try (MockedSingleton&lt;MyEnum&gt; mocked = mockSingleton(MyEnum.A)) {
+ *       when(MyEnum.A.method()).thenReturn("bar");
+ *       assertEquals("bar", MyEnum.A.method());
+ *   }
+ * </code></pre>
  */
 @CheckReturnValue
 @SuppressWarnings("unchecked")
@@ -2529,6 +2545,8 @@ public class Mockito extends ArgumentMatchers {
      * test or the mock will remain active on the current thread.
      * <p>
      * This is useful for mocking instances of objects for which you don't control initialization, assignment, or access to the object, e.g. Java enum values.
+     * <p>
+     * See examples in javadoc for {@link Mockito} class
      *
      * @param instance the singleton instance to mock.
      * @param <T> the type of the singleton.
@@ -2545,6 +2563,8 @@ public class Mockito extends ArgumentMatchers {
      * test or the mock will remain active on the current thread.
      * <p>
      * This is useful for mocking instances of objects for which you don't control initialization, assignment, or access to the object, e.g. Java enum values.
+     * <p>
+     * See examples in javadoc for {@link Mockito} class
      *
      * @param instance the singleton instance to mock.
      * @param mockSettings the mock settings to use.
