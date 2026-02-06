@@ -6,11 +6,10 @@ package org.mockito;
 
 /**
  * Represents an active thread-local mock of a singleton instance. The mocking only affects the thread
- * on which {@link Mockito#mockSingleton(Object)} was called, and it is not safe to use this object from another
- * thread. The singleton mock is released when this object's {@link #close()} method
- * is invoked. If this object is never closed, the mock will remain active on the
- * initiating thread. It is therefore recommended to create this object within a try-with-resources
- * statement.
+ * on which {@link Mockito#mockSingleton(Object)} was called, and the instance only behaves as a mock on that thread.
+ * The singleton mock is released when this object's {@link #close()} method is invoked. If this object is never closed,
+ * the mock will remain active on the initiating thread. It is therefore recommended to create this object within a
+ * try-with-resources statement.
  * <p>
  * Stubbing and verification on the instance can be done using the standard Mockito APIs.
  *
