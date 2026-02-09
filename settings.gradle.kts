@@ -22,7 +22,6 @@ include("mockito-core")
 include("mockito-bom")
 // extensions
 include(
-    "mockito-extensions:mockito-android",
     "mockito-extensions:mockito-errorprone",
     "mockito-extensions:mockito-junit-jupiter",
     "mockito-extensions:mockito-proxy",
@@ -51,9 +50,11 @@ include(
 // https://developer.android.com/studio/command-line/variables#envar
 // https://developer.android.com/studio/build#properties-files
 if (providers.environmentVariable("ANDROID_HOME").isPresent || File("local.properties").exists()) {
+    include("mockito-extensions:mockito-android-dispatcher")
+    include("mockito-extensions:mockito-android")
     include("mockito-integration-tests:android-tests")
 } else {
-    logger.info("Not including android test project due to missing SDK configuration")
+    logger.info("Not including android projects due to missing SDK configuration")
 }
 
 rootProject.name = "mockito"
