@@ -150,6 +150,25 @@ plugins.withType<JavaLibraryPlugin>().configureEach {
     }
 }
 
+// Android library publication conventions
+plugins.withId("com.android.library") {
+    afterEvaluate {
+        publishing {
+            publications {
+                register<MavenPublication>("mockitoLibrary") {
+                    from(components["release"])
+                    pom {
+                        packaging = "aar"
+                    }
+                }
+            }
+        }
+    }
+    tasks.build {
+        dependsOn("publishAllPublicationsToLocalRepository")
+    }
+}
+
 tasks.withType<GenerateModuleMetadata>().configureEach {
     enabled = false
 }

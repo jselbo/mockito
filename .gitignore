@@ -18,6 +18,9 @@ bin/
 # VSCode
 .vscode/
 
+# Android
+local.properties
+
 # Gradle & builds
 build
 build-cache

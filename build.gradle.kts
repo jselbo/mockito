@@ -15,8 +15,9 @@ plugins {
     id("com.github.ben-manes.versions") version "0.51.0"
     id("mockito.root.releasing-conventions")
 
-    // Top-level android plugin declaration required for :mockito-integration-tests:android-tests to work
+    // Top-level android plugin declarations required for android subprojects to work
     alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
 }
 
 
