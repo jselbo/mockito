@@ -17,28 +17,21 @@ import org.mockito.MockingDetails;
 import org.mockito.Mockito;
 import org.mockito.exceptions.base.MockitoAssertionError;
 import org.mockito.exceptions.base.MockitoException;
-import org.mockito.internal.debugging.LocationFactory;
 import org.mockito.internal.listeners.VerificationStartedNotifier;
 import org.mockito.internal.progress.MockingProgress;
 import org.mockito.internal.stubbing.InvocationContainerImpl;
 import org.mockito.internal.verification.MockAwareVerificationMode;
 import org.mockito.internal.verification.VerificationDataImpl;
-import org.mockito.invocation.Location;
 import org.mockito.invocation.MockHandler;
 import org.mockito.plugins.MockMaker;
 import org.mockito.stubbing.OngoingStubbing;
 import org.mockito.verification.VerificationMode;
 
-public final class MockedStaticImpl<T> implements MockedStatic<T> {
+public final class MockedStaticImpl<T> extends ScopedMockImpl<MockMaker.StaticMockControl<T>>
+        implements MockedStatic<T> {
 
-    private final MockMaker.StaticMockControl<T> control;
-
-    private boolean closed;
-
-    private final Location location = LocationFactory.create();
-
-    protected MockedStaticImpl(MockMaker.StaticMockControl<T> control) {
-        this.control = control;
+    public MockedStaticImpl(MockMaker.StaticMockControl<T> control) {
+        super(control);
     }
 
     @Override
@@ -142,36 +135,6 @@ public final class MockedStaticImpl<T> implements MockedStatic<T> {
         InvocationContainerImpl invocations = getInvocationContainer(control.getType());
         VerificationDataImpl data = new VerificationDataImpl(invocations, null);
         noInteractions().verify(data);
-    }
-
-    @Override
-    public boolean isClosed() {
-        return closed;
-    }
-
-    @Override
-    public void close() {
-        assertNotClosed();
-
-        closed = true;
-        control.disable();
-    }
-
-    @Override
-    public void closeOnDemand() {
-        if (!closed) {
-            close();
-        }
-    }
-
-    private void assertNotClosed() {
-        if (closed) {
-            throw new MockitoException(
-                    join(
-                            "The static mock created at",
-                            location.toString(),
-                            "is already resolved and cannot longer be used"));
-        }
     }
 
     @Override

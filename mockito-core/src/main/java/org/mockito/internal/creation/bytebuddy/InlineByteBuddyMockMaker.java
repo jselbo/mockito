@@ -94,6 +94,12 @@ public class InlineByteBuddyMockMaker
     }
 
     @Override
+    public <T> SingletonMockControl<T> createSingletonMock(
+            T instance, MockCreationSettings<T> settings, MockHandler handler) {
+        return inlineDelegateByteBuddyMockMaker.createSingletonMock(instance, settings, handler);
+    }
+
+    @Override
     public void clearAllCaches() {
         inlineDelegateByteBuddyMockMaker.clearAllCaches();
     }

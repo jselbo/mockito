@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 import net.bytebuddy.ClassFileVersion;
@@ -67,6 +68,7 @@ public class MockMethodAdvice extends MockMethodDispatcher {
 
     private final WeakConcurrentMap<Object, MockMethodInterceptor> interceptors;
     private final DetachedThreadLocal<Map<Class<?>, MockMethodInterceptor>> mockedStatics;
+    private final DetachedThreadLocal<Map<Object, MockMethodInterceptor>> mockedSingletons;
 
     private final String identifier;
 
@@ -81,11 +83,13 @@ public class MockMethodAdvice extends MockMethodDispatcher {
     public MockMethodAdvice(
             WeakConcurrentMap<Object, MockMethodInterceptor> interceptors,
             DetachedThreadLocal<Map<Class<?>, MockMethodInterceptor>> mockedStatics,
+            DetachedThreadLocal<Map<Object, MockMethodInterceptor>> mockedSingletons,
             String identifier,
             Predicate<Class<?>> isMockConstruction,
             ConstructionCallback onConstruction) {
         this.interceptors = interceptors;
         this.mockedStatics = mockedStatics;
+        this.mockedSingletons = mockedSingletons;
         this.onConstruction = onConstruction;
         this.identifier = identifier;
         this.isMockConstruction = isMockConstruction;
@@ -123,6 +127,9 @@ public class MockMethodAdvice extends MockMethodDispatcher {
     @Override
     public Callable<?> handle(Object instance, Method origin, Object[] arguments) throws Throwable {
         MockMethodInterceptor interceptor = interceptors.get(instance);
+        if (interceptor == null) {
+            interceptor = getSingletonMockInterceptor(instance);
+        }
         if (interceptor == null) {
             return null;
         }
@@ -170,7 +177,8 @@ public class MockMethodAdvice extends MockMethodDispatcher {
 
     @Override
     public boolean isMocked(Object instance) {
-        return isMock(instance) && selfCallInfo.checkSelfCall(instance);
+        return (isMock(instance) || getSingletonMockInterceptor(instance) != null)
+                && selfCallInfo.checkSelfCall(instance);
     }
 
     @Override
@@ -180,6 +188,15 @@ public class MockMethodAdvice extends MockMethodDispatcher {
         }
         Map<Class<?>, ?> interceptors = mockedStatics.get();
         return interceptors != null && interceptors.containsKey(type);
+    }
+
+    private MockMethodInterceptor getSingletonMockInterceptor(Object instance) {
+        if (instance.getClass() == ConcurrentHashMap.class) {
+            // Avoid recursive check
+            return null;
+        }
+        Map<Object, MockMethodInterceptor> singletonInterceptors = mockedSingletons.get();
+        return singletonInterceptors != null ? singletonInterceptors.get(instance) : null;
     }
 
     @Override

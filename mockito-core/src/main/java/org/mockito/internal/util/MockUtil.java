@@ -202,6 +202,13 @@ public class MockUtil {
         return mockMaker.createStaticMock(type, settings, handler);
     }
 
+    public static <T> MockMaker.SingletonMockControl<T> createSingletonMock(
+            T instance, MockCreationSettings<T> settings) {
+        MockMaker mockMaker = getMockMaker(settings.getMockMaker());
+        MockHandler<T> handler = createMockHandler(settings);
+        return mockMaker.createSingletonMock(instance, settings, handler);
+    }
+
     public static <T> MockMaker.ConstructionMockControl<T> createConstructionMock(
             Class<T> type,
             Function<MockedConstruction.Context, MockCreationSettings<T>> settingsFactory,

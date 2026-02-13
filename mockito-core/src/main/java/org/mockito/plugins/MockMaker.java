@@ -207,6 +207,29 @@ public interface MockMaker {
     }
 
     /**
+     * Creates a singleton mock for the given instance. The mock intercepts method calls
+     * on the provided instance.
+     *
+     * @param instance The singleton instance to mock.
+     * @param settings Mock creation settings.
+     * @param handler The mock handler.
+     * @param <T> The type of the singleton.
+     * @return A control for the singleton mock.
+     * @since 5.22.0
+     */
+    default <T> SingletonMockControl<T> createSingletonMock(
+            T instance, MockCreationSettings<T> settings, MockHandler handler) {
+        throw new MockitoException(
+                join(
+                        "The used MockMaker "
+                                + getClass().getSimpleName()
+                                + " does not support the creation of singleton mocks",
+                        "",
+                        "Ensure your MockMaker implementation supports this feature.",
+                        "Note that singleton mocks are not supported on Android."));
+    }
+
+    /**
      * Clears all cashes for mocked types and removes all byte code alterations, if possible.
      */
     default void clearAllCaches() {}
@@ -228,23 +251,26 @@ public interface MockMaker {
         String nonMockableReason();
     }
 
-    interface StaticMockControl<T> {
-
-        Class<T> getType();
-
+    interface ScopedMockControl {
         void enable();
 
         void disable();
     }
 
-    interface ConstructionMockControl<T> {
+    interface StaticMockControl<T> extends ScopedMockControl {
+
+        Class<T> getType();
+    }
+
+    interface ConstructionMockControl<T> extends ScopedMockControl {
 
         Class<T> getType();
 
-        void enable();
-
-        void disable();
-
         List<T> getMocks();
+    }
+
+    interface SingletonMockControl<T> extends ScopedMockControl {
+
+        T getInstance();
     }
 }

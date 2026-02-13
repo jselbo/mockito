@@ -17,6 +17,7 @@ import static org.mockito.internal.exceptions.Reporter.stubPassedToVerify;
 import static org.mockito.internal.progress.ThreadSafeMockingProgress.mockingProgress;
 import static org.mockito.internal.util.MockUtil.createConstructionMock;
 import static org.mockito.internal.util.MockUtil.createMock;
+import static org.mockito.internal.util.MockUtil.createSingletonMock;
 import static org.mockito.internal.util.MockUtil.createStaticMock;
 import static org.mockito.internal.util.MockUtil.getInvocationContainer;
 import static org.mockito.internal.util.MockUtil.getMockHandler;
@@ -32,6 +33,7 @@ import java.util.function.Function;
 import org.mockito.InOrder;
 import org.mockito.MockSettings;
 import org.mockito.MockedConstruction;
+import org.mockito.MockedSingleton;
 import org.mockito.MockedStatic;
 import org.mockito.MockingDetails;
 import org.mockito.exceptions.misusing.DoNotMockException;
@@ -71,14 +73,7 @@ public class MockitoCore {
             Plugins.getDoNotMockEnforcer();
 
     public <T> T mock(Class<T> typeToMock, MockSettings settings) {
-        if (!(settings instanceof MockSettingsImpl)) {
-            throw new IllegalArgumentException(
-                    "Unexpected implementation of '"
-                            + settings.getClass().getCanonicalName()
-                            + "'\n"
-                            + "At the moment, you cannot provide your own implementations of that class.");
-        }
-        MockSettingsImpl impl = (MockSettingsImpl) settings;
+        MockSettingsImpl impl = castMockSettings(settings);
         MockCreationSettings<T> creationSettings = impl.build(typeToMock);
         checkDoNotMockAnnotation(creationSettings);
         T mock = createMock(creationSettings);
@@ -87,20 +82,27 @@ public class MockitoCore {
     }
 
     public <T> MockedStatic<T> mockStatic(Class<T> classToMock, MockSettings settings) {
-        if (!MockSettingsImpl.class.isInstance(settings)) {
-            throw new IllegalArgumentException(
-                    "Unexpected implementation of '"
-                            + settings.getClass().getCanonicalName()
-                            + "'\n"
-                            + "At the moment, you cannot provide your own implementations of that class.");
-        }
-        MockSettingsImpl impl = MockSettingsImpl.class.cast(settings);
+        MockSettingsImpl impl = castMockSettings(settings);
         MockCreationSettings<T> creationSettings = impl.buildStatic(classToMock);
         checkDoNotMockAnnotation(creationSettings);
         MockMaker.StaticMockControl<T> control = createStaticMock(classToMock, creationSettings);
         control.enable();
         mockingProgress().mockingStarted(classToMock, creationSettings);
         return new MockedStaticImpl<>(control);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> MockedSingleton<T> mockSingleton(T instance, MockSettings settings) {
+        if (instance == null) {
+            throw new IllegalArgumentException("Cannot mock a null instance");
+        }
+        MockSettingsImpl impl = castMockSettings(settings);
+        MockCreationSettings<T> creationSettings = impl.build(instance.getClass());
+        checkDoNotMockAnnotation(creationSettings);
+        MockMaker.SingletonMockControl<T> control = createSingletonMock(instance, creationSettings);
+        control.enable();
+        mockingProgress().mockingStarted(instance, creationSettings);
+        return new MockedSingletonImpl<>(control);
     }
 
     private void checkDoNotMockAnnotation(MockCreationSettings<?> creationSettings) {
@@ -116,15 +118,8 @@ public class MockitoCore {
             MockedConstruction.MockInitializer<T> mockInitializer) {
         Function<MockedConstruction.Context, MockCreationSettings<T>> creationSettings =
                 context -> {
-                    MockSettings value = settingsFactory.apply(context);
-                    if (!MockSettingsImpl.class.isInstance(value)) {
-                        throw new IllegalArgumentException(
-                                "Unexpected implementation of '"
-                                        + value.getClass().getCanonicalName()
-                                        + "'\n"
-                                        + "At the moment, you cannot provide your own implementations of that class.");
-                    }
-                    MockSettingsImpl impl = MockSettingsImpl.class.cast(value);
+                    MockSettings settings = settingsFactory.apply(context);
+                    MockSettingsImpl impl = castMockSettings(settings);
                     String mockMaker = impl.getMockMaker();
                     if (mockMaker != null) {
                         throw new IllegalArgumentException(
@@ -321,5 +316,16 @@ public class MockitoCore {
 
     public void clearAllCaches() {
         MockUtil.clearAllCaches();
+    }
+
+    private MockSettingsImpl<?> castMockSettings(MockSettings settings) {
+        if (!(settings instanceof MockSettingsImpl)) {
+            throw new IllegalArgumentException(
+                    "Unexpected implementation of '"
+                            + settings.getClass().getCanonicalName()
+                            + "'\n"
+                            + "At the moment, you cannot provide your own implementations of that class.");
+        }
+        return (MockSettingsImpl<?>) settings;
     }
 }

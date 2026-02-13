@@ -87,6 +87,7 @@ public class InlineBytecodeGenerator implements BytecodeGenerator, ClassFileTran
             Instrumentation instrumentation,
             WeakConcurrentMap<Object, MockMethodInterceptor> mocks,
             DetachedThreadLocal<Map<Class<?>, MockMethodInterceptor>> mockedStatics,
+            DetachedThreadLocal<Map<Object, MockMethodInterceptor>> mockedSingletons,
             Predicate<Class<?>> isMockConstruction,
             ConstructionCallback onConstruction) {
         preload();
@@ -183,7 +184,12 @@ public class InlineBytecodeGenerator implements BytecodeGenerator, ClassFileTran
         MockMethodDispatcher.set(
                 identifier,
                 new MockMethodAdvice(
-                        mocks, mockedStatics, identifier, isMockConstruction, onConstruction));
+                        mocks,
+                        mockedStatics,
+                        mockedSingletons,
+                        identifier,
+                        isMockConstruction,
+                        onConstruction));
         instrumentation.addTransformer(this, true);
     }
 

@@ -233,6 +233,9 @@ class InlineDelegateByteBuddyMockMaker
     private final DetachedThreadLocal<Map<Class<?>, BiConsumer<Object, MockedConstruction.Context>>>
             mockedConstruction = new DetachedThreadLocal<>(DetachedThreadLocal.Cleaner.MANUAL);
 
+    private final DetachedThreadLocal<Map<Object, MockMethodInterceptor>> mockedSingletons =
+            new DetachedThreadLocal<>(DetachedThreadLocal.Cleaner.MANUAL);
+
     private final ThreadLocal<Class<?>> currentMocking = ThreadLocal.withInitial(() -> null);
 
     private final ThreadLocal<Object> currentSpied = new ThreadLocal<>();
@@ -357,6 +360,7 @@ class InlineDelegateByteBuddyMockMaker
                                 INSTRUMENTATION,
                                 mocks,
                                 mockedStatics,
+                                mockedSingletons,
                                 isMockConstruction,
                                 onConstruction),
                         true);
@@ -515,6 +519,13 @@ class InlineDelegateByteBuddyMockMaker
             interceptor = interceptors != null ? interceptors.get(mock) : null;
         } else {
             interceptor = mocks.get(mock);
+
+            if (interceptor == null) {
+                Map<Object, MockMethodInterceptor> singletonInterceptors = mockedSingletons.get();
+                if (singletonInterceptors != null) {
+                    interceptor = singletonInterceptors.get(mock);
+                }
+            }
         }
         if (interceptor == null) {
             return null;
@@ -537,6 +548,13 @@ class InlineDelegateByteBuddyMockMaker
             }
             interceptors.put((Class<?>) mock, mockMethodInterceptor);
         } else {
+            // Check for singleton mocks first
+            Map<Object, MockMethodInterceptor> singletonInterceptors = mockedSingletons.get();
+            if (singletonInterceptors != null && singletonInterceptors.containsKey(mock)) {
+                singletonInterceptors.put(mock, mockMethodInterceptor);
+                return;
+            }
+
             if (!mocks.containsKey(mock)) {
                 throw new MockitoException(
                         "Cannot reset " + mock + " which is not currently registered as a mock");
@@ -660,6 +678,29 @@ class InlineDelegateByteBuddyMockMaker
 
         return new InlineConstructionMockControl<>(
                 type, settingsFactory, handlerFactory, mockInitializer, interceptors);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> SingletonMockControl<T> createSingletonMock(
+            T instance, MockCreationSettings<T> settings, MockHandler handler) {
+        if (instance.getClass() == ConcurrentHashMap.class) {
+            throw new MockitoException(
+                    "It is not possible to create a singleton mock of ConcurrentHashMap "
+                            + "to avoid infinite loops within Mockito's implementation of mock handling");
+        }
+
+        // Instrument the class
+        createMockType(settings);
+
+        Map<Object, MockMethodInterceptor> singletons = mockedSingletons.get();
+        if (singletons == null) {
+            singletons = new WeakHashMap<>();
+            mockedSingletons.set(singletons);
+        }
+        mockedSingletons.getBackingMap().expungeStaleEntries();
+
+        return new InlineSingletonMockControl<>(instance, singletons, settings, handler);
     }
 
     @Override
@@ -864,6 +905,61 @@ class InlineDelegateByteBuddyMockMaker
         @SuppressWarnings("unchecked")
         public List<T> getMocks() {
             return (List<T>) all;
+        }
+    }
+
+    private static class InlineSingletonMockControl<T> implements SingletonMockControl<T> {
+
+        private final T instance;
+
+        private final Map<Object, MockMethodInterceptor> singletons;
+
+        private final MockCreationSettings<T> settings;
+
+        private final MockHandler<?> handler;
+
+        private InlineSingletonMockControl(
+                T instance,
+                Map<Object, MockMethodInterceptor> singletons,
+                MockCreationSettings<T> settings,
+                MockHandler<?> handler) {
+            this.instance = instance;
+            this.singletons = singletons;
+            this.settings = settings;
+            this.handler = handler;
+        }
+
+        @Override
+        public T getInstance() {
+            return instance;
+        }
+
+        @Override
+        public void enable() {
+            if (singletons.containsKey(instance)) {
+                throw new MockitoException(
+                        join(
+                                "The singleton instance "
+                                        + instance.getClass().getName()
+                                        + " is already registered as a mock",
+                                "",
+                                "To create a new mock, the existing mock registration must be deregistered"));
+            }
+            MockMethodInterceptor interceptor = new MockMethodInterceptor(handler, settings);
+            singletons.put(instance, interceptor);
+        }
+
+        @Override
+        public void disable() {
+            if (singletons.remove(instance) == null) {
+                throw new MockitoException(
+                        join(
+                                "Could not deregister "
+                                        + instance.getClass().getName()
+                                        + " as a singleton mock since it is not currently registered",
+                                "",
+                                "To register a singleton mock, use Mockito.mockSingleton(instance)"));
+            }
         }
     }
 
