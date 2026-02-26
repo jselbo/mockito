@@ -695,7 +695,7 @@ class InlineDelegateByteBuddyMockMaker
 
         Map<Object, MockMethodInterceptor> singletons = mockedSingletons.get();
         if (singletons == null) {
-            singletons = new WeakHashMap<>();
+            singletons = new IdentityHashMap<>();
             mockedSingletons.set(singletons);
         }
         mockedSingletons.getBackingMap().expungeStaleEntries();
